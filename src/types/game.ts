@@ -1,7 +1,10 @@
+/** A direction in which the player can slide the board. */
 export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 
+/** Current lifecycle state of a game. */
 export type GameStatus = 'PLAYING' | 'WON' | 'GAME_OVER';
 
+/** A numbered tile and its current position on the board. */
 export interface TileData {
   id: string;
   value: number;
@@ -11,6 +14,7 @@ export interface TileData {
   isMerged?: boolean;
 }
 
+/** Colors and optional effects used to render a tile. */
 export interface TileStyle {
   bg: string;
   text: string;
@@ -18,6 +22,7 @@ export interface TileStyle {
   fontSize?: string;
 }
 
+/** Complete color palette for the game interface and tiles. */
 export interface ColorScheme {
   id: string;
   name: string;
@@ -35,6 +40,7 @@ export interface ColorScheme {
   isCustom?: boolean;
 }
 
+/** All persistent and transient state required to render a game. */
 export interface GameState {
   tiles: TileData[];
   score: number;
@@ -45,12 +51,14 @@ export interface GameState {
   size: number;
 }
 
+/** The board and score snapshot used to restore one undo step. */
 export interface UndoStep {
   tiles: TileData[];
   score: number;
   movesCount: number;
 }
 
+/** Leaderboard submission saved locally until connectivity is available. */
 export interface OfflinePendingScore {
   id: string;
   score: number;

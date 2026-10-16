@@ -153,6 +153,21 @@ export default function App() {
     [gameState]
   );
 
+  const handleUndo = useCallback(() => {
+    if (undoHistory.length === 0) return;
+    soundAndHaptics.triggerHaptic(18);
+
+    const [previous, ...rest] = undoHistory;
+    setGameState((current) => ({
+      ...current,
+      tiles: previous.tiles,
+      score: previous.score,
+      movesCount: previous.movesCount,
+      status: 'PLAYING',
+    }));
+    setUndoHistory(rest);
+  }, [undoHistory]);
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -197,28 +212,13 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleMove, isLeaderboardOpen, isThemeModalOpen, isComposeModalOpen]);
+  }, [handleMove, handleUndo, isLeaderboardOpen, isThemeModalOpen, isComposeModalOpen]);
 
   const handleRestart = () => {
     soundAndHaptics.triggerHaptic(20);
     const newGame = initNewGame(gameState.size, gameState.bestScore);
     setGameState(newGame);
     setUndoHistory([]);
-  };
-
-  const handleUndo = () => {
-    if (undoHistory.length === 0) return;
-    soundAndHaptics.triggerHaptic(18);
-
-    const [previous, ...rest] = undoHistory;
-    setGameState((current) => ({
-      ...current,
-      tiles: previous.tiles,
-      score: previous.score,
-      movesCount: previous.movesCount,
-      status: 'PLAYING',
-    }));
-    setUndoHistory(rest);
   };
 
   const handleKeepPlaying = () => {

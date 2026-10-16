@@ -106,7 +106,7 @@ class SoundAndHapticsManager {
 
       // Base note determined by tile power of 2
       const power = Math.log2(highestMergedValue);
-      const baseFreq = 220 * Math.pow(1.05946, (power - 1) * 2); // ascending musical tone
+      const baseFreq = 220 * 1.05946 ** ((power - 1) * 2); // ascending musical tone
 
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();

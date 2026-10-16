@@ -1,0 +1,22 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+	"files": {
+		"ignoreUnknown": true,
+		"includes": ["**", "!dist", "!coverage", "!node_modules"]
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"a11y": {
+				"noLabelWithoutControl": "off",
+				"noStaticElementInteractions": "off",
+				"useButtonType": "off",
+				"useKeyWithClickEvents": "off"
+			}
+		}
+	},
+	"formatter": {
+		"enabled": false
+	}
+}

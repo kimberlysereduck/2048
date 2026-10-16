@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Trophy,
@@ -56,9 +56,18 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [offlinePendingCount, setOfflinePendingCount] = useState<number>(0);
 
-  const refreshOfflineCount = () => {
+  const refreshOfflineCount = useCallback(() => {
     setOfflinePendingCount(getOfflineScores().length);
-  };
+  }, []);
+
+  const handleSyncOffline = useCallback(async () => {
+    const synced = await syncOfflineScoresToFirebase();
+    if (synced > 0) {
+      setStatusMessage(`Synced ${synced} offline score${synced > 1 ? 's' : ''} to Firebase!`);
+      setTimeout(() => setStatusMessage(null), 4000);
+    }
+    refreshOfflineCount();
+  }, [refreshOfflineCount]);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -74,7 +83,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [handleSyncOffline]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -100,16 +109,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
     return () => {
       unsubscribe();
     };
-  }, [isOpen]);
-
-  const handleSyncOffline = async () => {
-    const synced = await syncOfflineScoresToFirebase();
-    if (synced > 0) {
-      setStatusMessage(`Synced ${synced} offline score${synced > 1 ? 's' : ''} to Firebase!`);
-      setTimeout(() => setStatusMessage(null), 4000);
-    }
-    refreshOfflineCount();
-  };
+  }, [isOpen, refreshOfflineCount]);
 
   const handleSubmitScore = async (e: React.FormEvent) => {
     e.preventDefault();

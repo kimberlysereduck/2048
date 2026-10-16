@@ -10,13 +10,15 @@ import {
   serverTimestamp,
   doc,
   getDocFromServer,
-  onSnapshot
+  onSnapshot,
+  Timestamp
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
+/** Firestore operations represented in structured error reports. */
 export enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -26,6 +28,7 @@ export enum OperationType {
   WRITE = 'write',
 }
 
+/** Structured metadata emitted when a Firestore operation fails. */
 export interface FirestoreErrorInfo {
   error: string;
   operationType: OperationType;
@@ -39,6 +42,14 @@ export interface FirestoreErrorInfo {
   };
 }
 
+/**
+ * Logs a structured Firestore error and throws it as an application error.
+ *
+ * @param error - Original Firestore error.
+ * @param operationType - Operation that failed.
+ * @param path - Firestore document or collection path, when known.
+ * @throws Always throws an error containing structured Firestore error details.
+ */
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
@@ -56,7 +67,11 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-// Test connection on boot as mandated by the Firebase integration skill
+/**
+ * Checks whether the Firestore server can be reached.
+ *
+ * @returns `true` when the server responds or returns a non-connectivity error.
+ */
 export async function testFirestoreConnection(): Promise<boolean> {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
@@ -71,6 +86,7 @@ export async function testFirestoreConnection(): Promise<boolean> {
   }
 }
 
+/** Public fields stored for a leaderboard entry. */
 export interface LeaderboardRecord {
   id?: string;
   playerName: string;
@@ -79,11 +95,17 @@ export interface LeaderboardRecord {
   movesCount: number;
   devicePlatform: string;
   themeUsed: string;
-  createdAt?: any;
+  createdAt?: Date | Timestamp | null;
 }
 
 const LEADERBOARD_PATH = 'leaderboard';
 
+/**
+ * Submits a player's score to the Firestore leaderboard.
+ *
+ * @param record - Score details without server-generated fields.
+ * @returns The created document id, or `null` when no id is returned.
+ */
 export async function submitScoreToFirebase(record: Omit<LeaderboardRecord, 'id' | 'createdAt'>): Promise<string | null> {
   try {
     const docRef = await addDoc(collection(db, LEADERBOARD_PATH), {
@@ -102,6 +124,13 @@ export async function submitScoreToFirebase(record: Omit<LeaderboardRecord, 'id'
   }
 }
 
+/**
+ * Subscribes to the top leaderboard records.
+ *
+ * @param onData - Callback invoked with each leaderboard snapshot.
+ * @param onError - Optional callback for subscription errors.
+ * @returns A function that stops the Firestore subscription.
+ */
 export function subscribeToLeaderboard(
   onData: (records: LeaderboardRecord[]) => void,
   onError?: (err: Error) => void
@@ -143,6 +172,11 @@ export function subscribeToLeaderboard(
   );
 }
 
+/**
+ * Fetches the current top leaderboard records once.
+ *
+ * @returns Up to 50 records ordered by descending score.
+ */
 export async function fetchTopLeaderboard(): Promise<LeaderboardRecord[]> {
   try {
     const q = query(
