@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "ScoreEntry": {
+      "title": "ScoreEntry",
+      "description": "High score record on the cross-device 2048 leaderboard",
+      "type": "object",
+      "properties": {
+        "score": {
+          "type": "integer",
+          "description": "Total score attained in the game"
+        },
+        "highestTile": {
+          "type": "integer",
+          "description": "Highest tile value reached (e.g. 2048)"
+        },
+        "movesCount": {
+          "type": "integer",
+          "description": "Number of moves made"
+        },
+        "playerName": {
+          "type": "string",
+          "description": "Player display name",
+          "maxLength": 30
+        },
+        "devicePlatform": {
+          "type": "string",
+          "description": "Device platform identifier (e.g. Android Compose)",
+          "maxLength": 30
+        },
+        "themeUsed": {
+          "type": "string",
+          "description": "Theme palette name used during run",
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Server timestamp of creation"
+        }
+      },
+      "required": ["score", "highestTile", "movesCount", "playerName", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/leaderboard/{scoreId}": {
+      "schema": "ScoreEntry",
+      "description": "Persistent cross-device player ranking records"
+    }
+  }
+}

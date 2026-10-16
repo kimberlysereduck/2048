@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidScore(data) {
+      return data.keys().hasAll(['score', 'highestTile', 'movesCount', 'playerName', 'createdAt']) &&
+        data.keys().hasOnly(['score', 'highestTile', 'movesCount', 'playerName', 'createdAt', 'devicePlatform', 'themeUsed']) &&
+        data.score is int && data.score >= 0 && data.score <= 10000000 &&
+        data.highestTile is int && data.highestTile >= 2 && data.highestTile <= 131072 &&
+        data.movesCount is int && data.movesCount >= 0 && data.movesCount <= 1000000 &&
+        data.playerName is string && data.playerName.size() >= 1 && data.playerName.size() <= 30 &&
+        (!('devicePlatform' in data) || (data.devicePlatform is string && data.devicePlatform.size() <= 30)) &&
+        (!('themeUsed' in data) || (data.themeUsed is string && data.themeUsed.size() <= 40)) &&
+        data.createdAt == request.time;
+    }
+
+    // Leaderboard collection
+    match /leaderboard/{scoreId} {
+      allow read: if true;
+      allow create: if isValidId(scoreId) && isValidScore(request.resource.data);
+      allow update, delete: if false;
+    }
+  }
+}

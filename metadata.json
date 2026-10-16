@@ -1,0 +1,6 @@
+{
+  "name": "2048 Android - Compose Edition",
+  "description": "Fluid 2048 puzzle game styled with Jetpack Compose & Material You, persistent cross-device Firebase leaderboard, offline local play, smooth slide/merge animations, haptics, and custom color palettes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
