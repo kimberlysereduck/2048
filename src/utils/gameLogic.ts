@@ -3,14 +3,32 @@ import { submitScoreToFirebase } from '../firebase';
 
 let nextTileId = 1;
 
+/**
+ * Creates a unique identifier for a game tile.
+ *
+ * @returns A time- and random-based tile identifier.
+ */
 export function generateTileId(): string {
   return `t_${Date.now()}_${nextTileId++}_${Math.random().toString(36).substring(2, 6)}`;
 }
 
+/**
+ * Creates a square grid with every cell empty.
+ *
+ * @param size - Number of rows and columns in the grid.
+ * @returns A newly allocated grid of empty cells.
+ */
 export function createEmptyGrid(size: number = 4): (TileData | null)[][] {
   return Array.from({ length: size }, () => Array(size).fill(null));
 }
 
+/**
+ * Lists the unoccupied coordinates in a square board.
+ *
+ * @param tiles - Tiles currently occupying the board.
+ * @param size - Number of rows and columns in the board.
+ * @returns Empty cell coordinates in row-major order.
+ */
 export function getAvailableCells(tiles: TileData[], size: number = 4): { row: number; col: number }[] {
   const occupied = new Set(tiles.map((t) => `${t.row},${t.col}`));
   const available: { row: number; col: number }[] = [];
@@ -26,6 +44,13 @@ export function getAvailableCells(tiles: TileData[], size: number = 4): { row: n
   return available;
 }
 
+/**
+ * Adds a randomly valued tile to an available board cell.
+ *
+ * @param tiles - Tiles currently occupying the board.
+ * @param size - Number of rows and columns in the board.
+ * @returns A new 2-or-4 tile, or `null` when no cells are available.
+ */
 export function spawnRandomTile(tiles: TileData[], size: number = 4): TileData | null {
   const available = getAvailableCells(tiles, size);
   if (available.length === 0) return null;
@@ -42,6 +67,13 @@ export function spawnRandomTile(tiles: TileData[], size: number = 4): TileData |
   };
 }
 
+/**
+ * Starts a new game with two randomly placed tiles.
+ *
+ * @param size - Number of rows and columns in the board.
+ * @param previousBest - Best score to retain in the new game.
+ * @returns Initial game state.
+ */
 export function initNewGame(size: number = 4, previousBest: number = 0): GameState {
   const tiles: TileData[] = [];
   const tile1 = spawnRandomTile(tiles, size);
@@ -61,6 +93,13 @@ export function initNewGame(size: number = 4, previousBest: number = 0): GameSta
   };
 }
 
+/**
+ * Checks whether an empty cell or an adjacent matching pair allows a move.
+ *
+ * @param tiles - Tiles currently occupying the board.
+ * @param size - Number of rows and columns in the board.
+ * @returns `true` when at least one move remains.
+ */
 export function checkHasMovesRemaining(tiles: TileData[], size: number = 4): boolean {
   if (tiles.length < size * size) return true;
 
@@ -91,6 +130,7 @@ export function checkHasMovesRemaining(tiles: TileData[], size: number = 4): boo
   return false;
 }
 
+/** Outcome of attempting to move the board in one direction. */
 export interface MoveResult {
   nextState: GameState;
   moved: boolean;
@@ -98,6 +138,13 @@ export interface MoveResult {
   highestMergedValue: number;
 }
 
+/**
+ * Slides and merges tiles in one direction, spawning a tile after a valid move.
+ *
+ * @param currentState - State to move.
+ * @param direction - Direction in which to slide the tiles.
+ * @returns The resulting state and details of the move.
+ */
 export function moveBoard(currentState: GameState, direction: Direction): MoveResult {
   const { tiles, size, score, bestScore, movesCount, wonAcknowledged } = currentState;
   if (currentState.status === 'GAME_OVER') {
@@ -236,6 +283,11 @@ const GAME_STATE_STORAGE_KEY = '2048_active_gamestate_v1';
 const BEST_SCORE_STORAGE_KEY = '2048_best_score_v1';
 const OFFLINE_SCORES_KEY = '2048_offline_scores_v1';
 
+/**
+ * Persists the current game and its best score in browser storage.
+ *
+ * @param state - Game state to persist.
+ */
 export function saveGameStateToStorage(state: GameState): void {
   try {
     localStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(state));
@@ -243,6 +295,11 @@ export function saveGameStateToStorage(state: GameState): void {
   } catch {}
 }
 
+/**
+ * Restores a saved game state from browser storage.
+ *
+ * @returns The stored game state, or `null` when none can be loaded.
+ */
 export function loadGameStateFromStorage(): GameState | null {
   try {
     const raw = localStorage.getItem(GAME_STATE_STORAGE_KEY);
@@ -256,6 +313,11 @@ export function loadGameStateFromStorage(): GameState | null {
   return null;
 }
 
+/**
+ * Reads the persisted best score.
+ *
+ * @returns The saved best score, or `0` when it is unavailable.
+ */
 export function loadBestScoreFromStorage(): number {
   try {
     const val = localStorage.getItem(BEST_SCORE_STORAGE_KEY);
@@ -265,6 +327,11 @@ export function loadBestScoreFromStorage(): number {
 }
 
 // Offline Leaderboard Queue Management
+/**
+ * Adds a leaderboard entry to the local queue for later submission.
+ *
+ * @param score - Score record to queue.
+ */
 export function queueOfflineScore(score: Omit<OfflinePendingScore, 'id' | 'timestamp'>): void {
   try {
     const pending: OfflinePendingScore[] = getOfflineScores();
@@ -277,6 +344,11 @@ export function queueOfflineScore(score: Omit<OfflinePendingScore, 'id' | 'times
   } catch {}
 }
 
+/**
+ * Reads leaderboard entries waiting for network submission.
+ *
+ * @returns Queued offline scores.
+ */
 export function getOfflineScores(): OfflinePendingScore[] {
   try {
     const raw = localStorage.getItem(OFFLINE_SCORES_KEY);
@@ -288,6 +360,11 @@ export function getOfflineScores(): OfflinePendingScore[] {
   return [];
 }
 
+/**
+ * Submits queued scores and retains entries whose submission fails.
+ *
+ * @returns The number of successfully submitted scores.
+ */
 export async function syncOfflineScoresToFirebase(): Promise<number> {
   const pending = getOfflineScores();
   if (pending.length === 0) return 0;

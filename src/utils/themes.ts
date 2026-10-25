@@ -1,5 +1,10 @@
-import { ColorScheme, TileStyle } from '../types/game';
+import type { ColorScheme, TileStyle } from '../types/game';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Built-in color palettes shipped with the game. */
 export const PRESET_THEMES: ColorScheme[] = [
   {
     id: 'material-you',
@@ -202,6 +207,11 @@ export const PRESET_THEMES: ColorScheme[] = [
 const CUSTOM_THEMES_KEY = '2048_custom_themes_v1';
 const SELECTED_THEME_KEY = '2048_selected_theme_id';
 
+/**
+ * Loads user-created palettes from browser storage.
+ *
+ * @returns Stored custom palettes, or an empty array when storage is unavailable.
+ */
 export function getSavedCustomThemes(): ColorScheme[] {
   try {
     const raw = localStorage.getItem(CUSTOM_THEMES_KEY);
@@ -213,6 +223,11 @@ export function getSavedCustomThemes(): ColorScheme[] {
   return [];
 }
 
+/**
+ * Saves a custom palette, replacing any saved palette with the same id.
+ *
+ * @param theme - Palette to persist.
+ */
 export function saveCustomTheme(theme: ColorScheme): void {
   const existing = getSavedCustomThemes();
   const index = existing.findIndex((t) => t.id === theme.id);
@@ -224,11 +239,21 @@ export function saveCustomTheme(theme: ColorScheme): void {
   localStorage.setItem(CUSTOM_THEMES_KEY, JSON.stringify(existing));
 }
 
+/**
+ * Removes a custom palette from browser storage.
+ *
+ * @param themeId - Identifier of the palette to remove.
+ */
 export function deleteCustomTheme(themeId: string): void {
   const existing = getSavedCustomThemes().filter((t) => t.id !== themeId);
   localStorage.setItem(CUSTOM_THEMES_KEY, JSON.stringify(existing));
 }
 
+/**
+ * Reads the id of the currently selected palette.
+ *
+ * @returns The selected palette id, defaulting to the built-in Material You theme.
+ */
 export function getSelectedThemeId(): string {
   try {
     const id = localStorage.getItem(SELECTED_THEME_KEY);
@@ -237,60 +262,80 @@ export function getSelectedThemeId(): string {
   return PRESET_THEMES[0].id; // Default to Material You
 }
 
+/**
+ * Persists the id of the currently selected palette.
+ *
+ * @param id - Palette identifier.
+ */
 export function setSelectedThemeId(id: string): void {
   try {
     localStorage.setItem(SELECTED_THEME_KEY, id);
   } catch {}
 }
 
+/**
+ * Combines the built-in palettes with any saved custom palettes.
+ *
+ * @returns All palettes available to the user.
+ */
 export function getAllThemes(): ColorScheme[] {
   const custom = getSavedCustomThemes();
   return [...PRESET_THEMES, ...custom];
 }
 
+/**
+ * Parses a JSON palette definition and fills in missing values from the default palette.
+ *
+ * @param rawJson - JSON text describing the custom palette.
+ * @returns A normalized custom color scheme.
+ * @throws An error when the input is invalid JSON or is not a JSON object.
+ */
 export function parseCustomPaletteJson(rawJson: string): ColorScheme {
-  let parsed: any;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(rawJson);
-  } catch (e) {
+  } catch {
     throw new Error('Invalid JSON format. Please ensure valid syntax.');
   }
 
-  if (!parsed || typeof parsed !== 'object') {
+  if (!isRecord(parsed)) {
     throw new Error('Palette must be a JSON object.');
   }
 
-  const name = String(parsed.name || 'Imported Palette').trim().slice(0, 30);
+  const getString = (value: unknown, fallback: string): string =>
+    typeof value === 'string' ? value : fallback;
+  const name = getString(parsed.name, 'Imported Palette').trim().slice(0, 30);
   const id = `custom_${Date.now()}`;
-  const accent = parsed.accent || '#6750A4';
-  const background = parsed.background || '#141218';
-  const surface = parsed.surface || '#1D1B20';
-  const surfaceVariant = parsed.surfaceVariant || '#2B2930';
-  const textPrimary = parsed.textPrimary || '#FFFFFF';
-  const textSecondary = parsed.textSecondary || '#A1A1AA';
-  const gridBackground = parsed.gridBackground || '#211F26';
-  const emptyCell = parsed.emptyCell || '#2B2930';
+  const accent = getString(parsed.accent, '#6750A4');
+  const background = getString(parsed.background, '#141218');
+  const surface = getString(parsed.surface, '#1D1B20');
+  const surfaceVariant = getString(parsed.surfaceVariant, '#2B2930');
+  const textPrimary = getString(parsed.textPrimary, '#FFFFFF');
+  const textSecondary = getString(parsed.textSecondary, '#A1A1AA');
+  const gridBackground = getString(parsed.gridBackground, '#211F26');
+  const emptyCell = getString(parsed.emptyCell, '#2B2930');
 
   const tileStyles: Record<number, TileStyle> = {};
   const values = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
 
   values.forEach((val) => {
-    if (parsed.tileStyles && parsed.tileStyles[val]) {
-      const t = parsed.tileStyles[val];
+    const tileStyle = isRecord(parsed.tileStyles) ? parsed.tileStyles[val] : undefined;
+    if (isRecord(tileStyle)) {
       tileStyles[val] = {
-        bg: t.bg || '#381E72',
-        text: t.text || '#FFFFFF',
-        glow: t.glow,
+        bg: getString(tileStyle.bg, '#381E72'),
+        text: getString(tileStyle.text, '#FFFFFF'),
+        glow: typeof tileStyle.glow === 'string' ? tileStyle.glow : undefined,
       };
     } else {
       tileStyles[val] = PRESET_THEMES[0].tileStyles[val];
     }
   });
 
+  const importedDefaultStyle = isRecord(parsed.defaultTileStyle) ? parsed.defaultTileStyle : {};
   return {
     id,
     name,
-    description: parsed.description || 'Imported custom color palette.',
+    description: getString(parsed.description, 'Imported custom color palette.'),
     accent,
     background,
     surface,
@@ -300,7 +345,12 @@ export function parseCustomPaletteJson(rawJson: string): ColorScheme {
     gridBackground,
     emptyCell,
     tileStyles,
-    defaultTileStyle: parsed.defaultTileStyle || PRESET_THEMES[0].defaultTileStyle,
+    defaultTileStyle: {
+      bg: getString(importedDefaultStyle.bg, PRESET_THEMES[0].defaultTileStyle.bg),
+      text: getString(importedDefaultStyle.text, PRESET_THEMES[0].defaultTileStyle.text),
+      glow: typeof importedDefaultStyle.glow === 'string' ? importedDefaultStyle.glow : undefined,
+      fontSize: typeof importedDefaultStyle.fontSize === 'string' ? importedDefaultStyle.fontSize : undefined,
+    },
     isCustom: true,
   };
 }
